@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { LoanExternalPort } from '../../../../../domain/ports/out/loan-external.port';
+import type { LoanExternalPort } from '../../../../domain/ports/out/loan-external.port';
 
 @Injectable()
 export class LoanHttpAdapter implements LoanExternalPort {

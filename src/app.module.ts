@@ -11,7 +11,17 @@ import { UserHttpAdapter } from './infrastructure/adapters/out/external/user-htt
     HttpModule,
     JwtModule.register({ secret: process.env.JWT_SECRET || 'secret' }), // Para validar JWT
   ],
-  providers: [MetricsService, LoanHttpAdapter, UserHttpAdapter],
+  providers: [
+    MetricsService,
+    {
+      provide: 'LoanExternalPort',
+      useClass: LoanHttpAdapter,
+    },
+    {
+      provide: 'UserExternalPort',
+      useClass: UserHttpAdapter,
+    },
+  ],
   controllers: [AdminController],
 })
 export class AppModule {}

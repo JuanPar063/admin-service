@@ -1,8 +1,8 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { MetricsService } from '../../../../application/services/metrics.service';
-import { GetMetricsPort } from '../../../../domain/ports/in/get-metrics.port';
-import { JwtAuthGuard } from '../../../guards/jwt-auth.guard'; // Asume guard para role 'admin'
-import { Roles } from '../../../decorators/roles.decorator'; // Custom decorator para @Roles('admin')
+import { MetricsService } from '../../../application/services/metrics.service';
+import { GetMetricsPort } from '../../../domain/ports/in/get-metrics.port';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard'; // Asume guard para role 'admin'
+import { Roles } from '../../decorators/roles.decorator'; // Custom decorator para @Roles('admin')
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)

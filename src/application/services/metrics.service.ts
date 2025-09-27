@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { GetMetricsPort } from '../../domain/ports/in/get-metrics.port';
-import { LoanExternalPort } from '../../domain/ports/out/loan-external.port';
-import { UserExternalPort } from '../../domain/ports/out/user-external.port';
+import type { LoanExternalPort } from '../../domain/ports/out/loan-external.port';
+import type { UserExternalPort } from '../../domain/ports/out/user-external.port';
 import { Metrics } from '../../domain/entities/metrics.entity';
 
 @Injectable()
 export class MetricsService implements GetMetricsPort {
   constructor(
-    private readonly loanExternal: LoanExternalPort,
-    private readonly userExternal: UserExternalPort,
+    @Inject('LoanExternalPort') private readonly loanExternal: LoanExternalPort,
+    @Inject('UserExternalPort') private readonly userExternal: UserExternalPort,
   ) {}
 
   async getMetrics(userId: string): Promise<Metrics> {
