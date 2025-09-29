@@ -1,4 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { GetMetricsPort } from '../../domain/ports/in/get-metrics.port';
 import type { LoanExternalPort } from '../../domain/ports/out/loan-external.port';
 import type { UserExternalPort } from '../../domain/ports/out/user-external.port';
@@ -7,22 +9,46 @@ import { Metrics } from '../../domain/entities/metrics.entity';
 @Injectable()
 export class MetricsService implements GetMetricsPort {
   constructor(
+    @InjectRepository(Metrics)
+    private readonly metricsRepository: Repository<Metrics>,
     @Inject('LoanExternalPort') private readonly loanExternal: LoanExternalPort,
     @Inject('UserExternalPort') private readonly userExternal: UserExternalPort,
   ) {}
 
   async getMetrics(userId: string): Promise<Metrics> {
-    const user = await this.userExternal.getUser (userId);
-    if (!user || user.role !== 'client') throw new Error('Invalid user for metrics');
-    
-    const loansData = await this.loanExternal.getLoansByUser (userId);
-    const creditScore = 100 - (loansData.pendingLoans * 10); // Lógica simple
-    const metrics = new Metrics({
-      userId,
-      creditScore: Math.max(0, creditScore),
-      pendingLoans: loansData.pendingLoans,
-      riskLevel: new Metrics({}).calculateRisk(loansData.pendingLoans, loansData.totalLoans),
-    });
+    // Busca si ya existen métricas para ese usuario
+    let metrics = await this.metricsRepository.findOne({ where: { user_id: userId } });
+
+    if (!metrics) {
+      // Si no existen, calcula y guarda nuevas métricas
+      const user = await this.userExternal.getUser(userId);
+      if (!user || user.role !== 'client') throw new Error('Invalid user for metrics');
+      const loansData = await this.loanExternal.getLoansByUser(userId);
+      const creditScore = 100 - (loansData.pendingLoans * 10);
+
+      metrics = this.metricsRepository.create({
+        user_id: userId,
+        credit_score: Math.max(0, creditScore),
+        pending_loans: loansData.pendingLoans,
+        total_loans: loansData.totalLoans,
+        risk_level: this.calculateRisk(loansData.pendingLoans, loansData.totalLoans),
+      });
+
+      await this.metricsRepository.save(metrics);
+    }
+
     return metrics;
+  }
+
+  // Método para obtener todas las métricas
+  async findAll(): Promise<Metrics[]> {
+  return this.metricsRepository.find();
+}
+
+  // Método auxiliar para calcular el riesgo
+  private calculateRisk(pendingLoans: number, totalLoans: number): 'low' | 'medium' | 'high' {
+    if (pendingLoans === 0) return 'low';
+    if (pendingLoans / totalLoans > 0.5) return 'high';
+    return 'medium';
   }
 }

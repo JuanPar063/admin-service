@@ -1,16 +1,28 @@
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+
+@Entity({ schema: 'admin_service', name: 'metrics' })
 export class Metrics {
-  userId: string;
-  creditScore: number;
-  pendingLoans: number;
-  riskLevel: 'low' | 'medium' | 'high';
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  constructor(data: Partial<Metrics>) {
-    Object.assign(this, data);
-  }
+  @Column()
+  user_id: string;
 
-  calculateRisk(pendingLoans: number, totalLoans: number): 'low' | 'medium' | 'high' {
-    if (pendingLoans === 0) return 'low';
-    if (pendingLoans / totalLoans > 0.5) return 'high';
-    return 'medium';
-  }
+  @Column({ type: 'int' })
+  credit_score: number;
+
+  @Column({ type: 'int' })
+  pending_loans: number;
+
+  @Column({ type: 'int' })
+  total_loans: number;
+
+  @Column({ type: 'varchar' })
+  risk_level: 'low' | 'medium' | 'high';
+
+  @CreateDateColumn({ type: 'timestamp', name: 'calculated_at' })
+  calculated_at: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
+  updated_at: Date;
 }
