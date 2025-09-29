@@ -25,3 +25,6 @@ import { UserHttpAdapter } from './infrastructure/adapters/out/external/user-htt
   controllers: [AdminController],
 })
 export class AppModule {}
+
+// Nota: Swagger se configura en main.ts, 
+// no es necesario modificar AppModule.
