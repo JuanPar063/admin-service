@@ -44,3 +44,6 @@ import { Report } from './domain/entities/report.entity';
   controllers: [AdminController],
 })
 export class AppModule {}
+
+// Nota: Swagger se configura en main.ts, 
+// no es necesario modificar AppModule.
