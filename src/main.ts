@@ -19,7 +19,6 @@ async function bootstrap() {
 
   
   await app.listen(port);
-  console.log(`🚀 Admin Service running at: http://localhost:${port}`);
   console.log(`📄 Swagger docs available at: http://localhost:${port}/api/docs`);
   console.log(`Metrics: http://localhost:${port}/admin/metrics`);
   console.log(`Audit logs:    http://localhost:${port}/admin/audit-logs`);
