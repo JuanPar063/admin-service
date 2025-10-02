@@ -18,4 +18,10 @@ export class ReportService {
   async findAll(): Promise<Report[]> {
     return this.reportRepository.find();
   }
+
+  async getReports(filters: { type?: string; from?: string; to?: string }) {
+    const where: any = {};
+    if (filters.type) where.type = filters.type;
+    return this.reportRepository.find({ where });
+  }
 }

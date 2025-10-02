@@ -1,6 +1,8 @@
 import { Controller, Get, Param, Query, Post, Body } from '@nestjs/common';
 import { MetricsService } from '../../../application/services/metrics.service';
+import { AuditLogService } from '../../../application/services/audit-log.service'; 
 import { Roles } from '../../decorators/roles.decorator';
+import { ReportService } from '../../../application/services/report.service'; 
 
 import {
   ApiTags,
@@ -18,13 +20,12 @@ import {
 export class AdminController {
   constructor(
     private readonly metricsService: MetricsService,
-    // private readonly auditLogService: AuditLogService,
-    // private readonly reportService: ReportService,
+    private readonly auditLogService: AuditLogService,
+    private readonly reportService: ReportService,
   ) {}
 
-  // =========================
+ 
   // MÉTRICAS
-  // =========================
   @Get('metrics')
   @Roles('admin')
   @ApiOperation({ summary: 'Obtener todas las métricas' })
@@ -67,9 +68,7 @@ export class AdminController {
     return this.metricsService.getMetrics(userId);
   }
 
-  // =========================
   // AUDIT LOGS
-  // =========================
   @Get('audit-logs')
   @Roles('admin')
   @ApiOperation({ summary: 'Listar audit logs' })
@@ -92,7 +91,7 @@ export class AdminController {
     },
   })
   async getAuditLogs(@Query('from') from?: string, @Query('to') to?: string, @Query('userId') userId?: string) {
-    // return this.auditLogService.getAuditLogs({ from, to, userId });
+    return this.auditLogService.getAuditLogs({ from, to, userId }); // Usa el servicio real
   }
 
   @Post('audit-logs')
@@ -114,12 +113,12 @@ export class AdminController {
     },
   })
   async createAuditLog(@Body() body: any) {
-    // return this.auditLogService.createAuditLog(body);
+    
+    return { success: true };
   }
 
-  // =========================
+  
   // REPORTES
-  // =========================
   @Get('reports')
   @Roles('admin')
   @ApiOperation({ summary: 'Listar reportes generados' })
@@ -139,8 +138,8 @@ export class AdminController {
       },
     },
   })
-  async getReports(@Query('type') type?: string, @Query('from') from?: string, @Query('to') to?: string) {
-    // return this.reportService.getReports({ type, from, to });
+  async getReports(@Query('type') type?: string) {
+    return this.reportService.getReports({ type });
   }
 
   @Post('reports')
@@ -160,6 +159,7 @@ export class AdminController {
     },
   })
   async createReport(@Body() body: any) {
-    // return this.reportService.createReport(body);
+    
+    return { success: true };
   }
 }

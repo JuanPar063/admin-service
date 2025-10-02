@@ -10,12 +10,10 @@ export class AuditLogService {
     private readonly auditLogRepository: Repository<AuditLog>,
   ) {}
 
-  async createLog(data: Partial<AuditLog>): Promise<AuditLog> {
-    const log = this.auditLogRepository.create(data);
-    return this.auditLogRepository.save(log);
-  }
-
-  async findAll(): Promise<AuditLog[]> {
-    return this.auditLogRepository.find();
+  async getAuditLogs(filters: { from?: string; to?: string; userId?: string }) {
+    const where: any = {};
+    if (filters.userId) where.userId = filters.userId;
+    // Puedes agregar lógica para filtrar por fechas si lo necesitas
+    return this.auditLogRepository.find({ where });
   }
 }

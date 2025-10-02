@@ -10,8 +10,8 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   host: process.env.DATABASE_HOST || 'localhost',
   port: parseInt(process.env.DATABASE_PORT || '5432', 10),
   username: process.env.DATABASE_USER || 'postgres',
-  password: process.env.DATABASE_PASSWORD || 'password',
-  database: process.env.DATABASE_NAME || 'mydb',
+  password: process.env.DATABASE_PASSWORD || 'admin123',
+  database: process.env.DATABASE_NAME || 'admin_service_db',
   entities: [Metrics, AuditLog, Report],
   synchronize: true,
 };

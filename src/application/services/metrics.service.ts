@@ -40,10 +40,25 @@ export class MetricsService implements GetMetricsPort {
     return metrics;
   }
 
-  // Método para obtener todas las métricas
-  async findAll(): Promise<Metrics[]> {
-  return this.metricsRepository.find();
-}
+  // Método para obtener todas las métricas con paginación
+  async getAllMetrics(page?: number, limit?: number): Promise<{ data: Metrics[]; total: number; page: number; limit: number }> {
+    const currentPage = page || 1;
+    const currentLimit = limit || 10;
+    const skip = (currentPage - 1) * currentLimit;
+
+    const [data, total] = await this.metricsRepository.findAndCount({
+      skip,
+      take: currentLimit,
+      order: { calculated_at: 'DESC' }
+    });
+
+    return {
+      data,
+      total,
+      page: currentPage,
+      limit: currentLimit
+    };
+  }
 
   // Método auxiliar para calcular el riesgo
   private calculateRisk(pendingLoans: number, totalLoans: number): 'low' | 'medium' | 'high' {
