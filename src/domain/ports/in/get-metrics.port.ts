@@ -1,5 +1,5 @@
-import { Metrics } from '../../entities/metrics.entity';
+import { GetMetricsDto } from '../../../infrastructure/dto/get-metrics.dto';
 
 export interface GetMetricsPort {
-  getMetrics(userId: string): Promise<Metrics>;
+  getMetrics(userId: string): Promise<GetMetricsDto>;
 }

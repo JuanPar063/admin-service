@@ -3,6 +3,7 @@ import { MetricsService } from '../../../application/services/metrics.service';
 import { AuditLogService } from '../../../application/services/audit-log.service'; 
 import { Roles } from '../../decorators/roles.decorator';
 import { ReportService } from '../../../application/services/report.service'; 
+import { GetMetricsDto } from '../../dto/get-metrics.dto';
 
 import {
   ApiTags,
@@ -64,9 +65,9 @@ export class AdminController {
       },
     },
   })
-  async getMetrics(@Param('userId') userId: string) {
-    return this.metricsService.getMetrics(userId);
-  }
+  async getMetrics(@Param('userId') userId: string): Promise<GetMetricsDto> {
+  return this.metricsService.getMetrics(userId);
+}
 
   // AUDIT LOGS
   @Get('audit-logs')
@@ -138,8 +139,8 @@ export class AdminController {
       },
     },
   })
-  async getReports(@Query('type') type?: string) {
-    return this.reportService.getReports({ type });
+  async getReports(@Query('period') period?: string) {
+    return this.reportService.getReports({ period });
   }
 
   @Post('reports')
