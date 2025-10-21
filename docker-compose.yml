@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 version: '3.8'
 services:
   postgres:
@@ -7,10 +8,37 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin123
       POSTGRES_DB: admin_service_db
+=======
+version: '3.9'
+
+services:
+  admin-service:
+    build: .
+    container_name: admin-service
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  db:
+    image: postgres:16
+    container_name: admin-db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: admin_service
+>>>>>>> 715ac157554a1957566a72b6ea03c87b77362d38
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+<<<<<<< HEAD
 
   admin-service:
     build: .
@@ -27,3 +55,14 @@ services:
 
 volumes:
   postgres_data:
+=======
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+>>>>>>> 715ac157554a1957566a72b6ea03c87b77362d38
