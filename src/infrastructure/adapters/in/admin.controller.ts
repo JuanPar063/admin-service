@@ -1,9 +1,11 @@
-import { Controller, Get, Param, Query, Post, Body } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, UseGuards, Req } from '@nestjs/common';
 import { MetricsService } from '../../../application/services/metrics.service';
-import { AuditLogService } from '../../../application/services/audit-log.service'; 
+import { AuditLogService } from '../../../application/services/audit-log.service';
 import { Roles } from '../../decorators/roles.decorator';
-import { ReportService } from '../../../application/services/report.service'; 
+import { ReportService } from '../../../application/services/report.service';
 import { GetMetricsDto } from '../../dto/get-metrics.dto';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
+import { ExternalUserService } from '../../../application/services/external-user.service'; // Nuevo import
 
 import {
   ApiTags,
@@ -23,12 +25,21 @@ export class AdminController {
     private readonly metricsService: MetricsService,
     private readonly auditLogService: AuditLogService,
     private readonly reportService: ReportService,
+    private readonly externalUserService: ExternalUserService, // Nuevo servicio
   ) {}
 
- 
+  @Get('profiles')
+  @Roles('admin')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Listar perfiles de administradores' })
+  async getAdminProfiles(): Promise<any[]> {
+    return this.externalUserService.getAdminProfiles();
+  }
+
   // MÉTRICAS
   @Get('metrics')
   @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Obtener todas las métricas' })
   @ApiOkResponse({
     description: 'Lista de métricas',
@@ -49,8 +60,30 @@ export class AdminController {
     return this.metricsService.getAllMetrics(page, limit);
   }
 
+  @Get('metrics/me')
+  @Roles('admin')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Obtener métricas del usuario autenticado' })
+  @ApiOkResponse({
+    description: 'Métricas del usuario autenticado',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', example: '12345' },
+        loansCount: { type: 'number', example: 5 },
+        totalAmount: { type: 'number', example: 250000 },
+        lastActivityAt: { type: 'string', format: 'date-time', example: '2025-09-20T15:45:00.000Z' },
+      },
+    },
+  })
+  async getMyMetrics(@Req() req): Promise<GetMetricsDto> {
+    const userId = req.user.id_user; // Extraído del JWT
+    return this.metricsService.getMetrics(userId);
+  }
+
   @Get('metrics/:userId')
   @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Obtener métricas de un usuario' })
   @ApiParam({ name: 'userId', type: String, example: '12345' })
   @ApiOkResponse({
@@ -66,12 +99,13 @@ export class AdminController {
     },
   })
   async getMetrics(@Param('userId') userId: string): Promise<GetMetricsDto> {
-  return this.metricsService.getMetrics(userId);
-}
+    return this.metricsService.getMetrics(userId);
+  }
 
   // AUDIT LOGS
   @Get('audit-logs')
   @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Listar audit logs' })
   @ApiOkResponse({
     description: 'Lista de audit logs',
@@ -92,11 +126,12 @@ export class AdminController {
     },
   })
   async getAuditLogs(@Query('from') from?: string, @Query('to') to?: string, @Query('userId') userId?: string) {
-    return this.auditLogService.getAuditLogs({ from, to, userId }); // Usa el servicio real
+    return this.auditLogService.getAuditLogs({ from, to, userId });
   }
 
   @Post('audit-logs')
   @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Crear un audit log' })
   @ApiCreatedResponse({
     description: 'Audit log creado',
@@ -114,14 +149,13 @@ export class AdminController {
     },
   })
   async createAuditLog(@Body() body: any) {
-    
     return { success: true };
   }
 
-  
   // REPORTES
   @Get('reports')
   @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Listar reportes generados' })
   @ApiOkResponse({
     description: 'Listado de reportes',
@@ -145,6 +179,7 @@ export class AdminController {
 
   @Post('reports')
   @Roles('admin')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Generar un reporte' })
   @ApiCreatedResponse({
     description: 'Reporte generado',
@@ -160,7 +195,7 @@ export class AdminController {
     },
   })
   async createReport(@Body() body: any) {
-    
     return { success: true };
   }
 }
+

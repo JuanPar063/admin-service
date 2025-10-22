@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { MetricsService } from './application/services/metrics.service';
 import { AuditLogService } from './application/services/audit-log.service';
 import { ReportService } from './application/services/report.service';
+import { ExternalUserService } from './application/services/external-user.service'; // <-- Importa el servicio externo
 import { AdminController } from './infrastructure/adapters/in/admin.controller';
 import { LoanHttpAdapter } from './infrastructure/adapters/out/external/loan-http.adapter';
 import { UserHttpAdapter } from './infrastructure/adapters/out/external/user-http.adapter';
@@ -18,20 +19,21 @@ import { Report } from './domain/entities/report.entity';
       type: 'postgres',
       host: 'localhost',
       port: 5432,
-      username: 'postgres', // usuario
-      password: 'admin123', // contraseña 
-      database: 'admin_service_db', // nombre de la base de datos
-      entities: [Metrics, AuditLog, Report], 
-      synchronize: true, // Solo para desarrollo
+      username: 'postgres',
+      password: 'admin123',
+      database: 'admin_service_db',
+      entities: [Metrics, AuditLog, Report],
+      synchronize: true,
     }),
-    TypeOrmModule.forFeature([Metrics, AuditLog, Report]), 
+    TypeOrmModule.forFeature([Metrics, AuditLog, Report]),
     HttpModule,
-    JwtModule.register({ secret: process.env.JWT_SECRET || 'secret' }), // Para validar JWT
+    JwtModule.register({ secret: process.env.JWT_SECRET || 'secret' }),
   ],
   providers: [
     MetricsService,
     AuditLogService,
     ReportService,
+    ExternalUserService, 
     {
       provide: 'LoanExternalPort',
       useClass: LoanHttpAdapter,
@@ -45,5 +47,3 @@ import { Report } from './domain/entities/report.entity';
 })
 export class AppModule {}
 
-// Nota: Swagger se configura en main.ts, 
-// no es necesario modificar AppModule.
