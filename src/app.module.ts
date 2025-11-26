@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { JwtModule } from '@nestjs/jwt';
 import { MetricsService } from './application/services/metrics.service';
+import { ClientMetricsService } from './application/services/client-metrics.service'; // NUEVO
 import { AuditLogService } from './application/services/audit-log.service';
 import { ReportService } from './application/services/report.service';
-import { ExternalUserService } from './application/services/external-user.service'; // <-- Importa el servicio externo
+import { ExternalUserService } from './application/services/external-user.service';
 import { AdminController } from './infrastructure/adapters/in/admin.controller';
 import { LoanHttpAdapter } from './infrastructure/adapters/out/external/loan-http.adapter';
 import { UserHttpAdapter } from './infrastructure/adapters/out/external/user-http.adapter';
@@ -31,6 +32,7 @@ import { Report } from './domain/entities/report.entity';
   ],
   providers: [
     MetricsService,
+    ClientMetricsService, 
     AuditLogService,
     ReportService,
     ExternalUserService, 
@@ -46,4 +48,3 @@ import { Report } from './domain/entities/report.entity';
   controllers: [AdminController],
 })
 export class AppModule {}
-
