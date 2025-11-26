@@ -13,7 +13,10 @@ export class ClientMetricsService {
     private readonly metricsRepository: Repository<Metrics>,
   ) {}
 
-
+  /**
+   * Obtiene los datos agregados de un cliente específico
+   * Incluye: score crediticio, nivel de riesgo e indicadores
+   */
   async getClientMetrics(clientId: string): Promise<MetricsDetailDto> {
     this.logger.log(`Obteniendo métricas detalladas para el cliente: ${clientId}`);
 
@@ -24,28 +27,30 @@ export class ClientMetricsService {
 
       if (!metrics) {
         this.logger.warn(`No se encontraron métricas para el cliente: ${clientId}`);
-        throw new BadRequestException(
-          `No existen métricas registradas para el cliente ${clientId}`,
-        );
+        throw new BadRequestException(`No existen métricas registradas para el cliente ${clientId}`);
       }
 
-      this.logger.debug(
-        `Métricas encontradas - Score: ${metrics.credit_score}, Riesgo: ${metrics.risk_level}`,
-      );
+      this.logger.debug(`Métricas encontradas - Score: ${metrics.credit_score}, Riesgo: ${metrics.risk_level}`);
 
-      // 
-      return this.mapToDto(metrics);
+      return {
+        clientId: metrics.user_id,
+        creditScore: metrics.credit_score,
+        riskLevel: metrics.risk_level,
+        pendingLoans: metrics.pending_loans,
+        totalLoans: metrics.total_loans,
+        calculatedAt: metrics.calculated_at,
+        updatedAt: metrics.updated_at,
+      };
     } catch (error) {
-      this.logger.error(
-        `Error al obtener métricas del cliente ${clientId}`,
-        (error as Error).stack,
-      );
-      // 
+      this.logger.error(`Error al obtener métricas del cliente ${clientId}`, error.stack);
       throw new BadRequestException('Error al consultar las métricas del cliente');
     }
   }
 
-
+  /**
+   * Exporta o analiza los datos de un cliente
+   * Retorna un resumen estructurado para análisis
+   */
   async exportClientMetrics(clientId: string): Promise<{
     clientId: string;
     summary: MetricsDetailDto;
@@ -60,11 +65,7 @@ export class ClientMetricsService {
     const metrics = await this.getClientMetrics(clientId);
 
     const analysis = {
-      riskAssessment: this.assessRisk(
-        metrics.riskLevel,
-        metrics.pendingLoans,
-        metrics.totalLoans,
-      ),
+      riskAssessment: this.assessRisk(metrics.riskLevel, metrics.pendingLoans, metrics.totalLoans),
       creditWorthiness: this.assessCreditWorthiness(metrics.creditScore),
       recommendations: this.generateRecommendations(metrics),
     };
@@ -76,36 +77,30 @@ export class ClientMetricsService {
     };
   }
 
-
-  async getMultipleClientsMetrics(
-    clientIds: string[],
-  ): Promise<MetricsDetailDto[]> {
+  /**
+   * Obtiene métricas de múltiples clientes con filtros
+   */
+  async getMultipleClientsMetrics(clientIds: string[]): Promise<MetricsDetailDto[]> {
     this.logger.log(`Obteniendo métricas para ${clientIds.length} clientes`);
 
     try {
       const metrics = await this.metricsRepository.find({
-        where: clientIds.map((id) => ({ user_id: id })),
+        where: clientIds.map(id => ({ user_id: id })),
       });
 
-      // 
-      return metrics.map((m) => this.mapToDto(m));
+      return metrics.map(m => ({
+        clientId: m.user_id,
+        creditScore: m.credit_score,
+        riskLevel: m.risk_level,
+        pendingLoans: m.pending_loans,
+        totalLoans: m.total_loans,
+        calculatedAt: m.calculated_at,
+        updatedAt: m.updated_at,
+      }));
     } catch (error) {
-      this.logger.error('Error al obtener métricas múltiples', (error as Error).stack);
+      this.logger.error('Error al obtener métricas múltiples', error.stack);
       throw new BadRequestException('Error al consultar las métricas de los clientes');
     }
-  }
-
-  // 🔹 Helper para no repetir el mapeo entidad -> DTO
-  private mapToDto(entity: Metrics): MetricsDetailDto {
-    return {
-      clientId: entity.user_id,
-      creditScore: entity.credit_score,
-      riskLevel: entity.risk_level,
-      pendingLoans: entity.pending_loans,
-      totalLoans: entity.total_loans,
-      calculatedAt: entity.calculated_at,
-      updatedAt: entity.updated_at,
-    };
   }
 
   private assessRisk(riskLevel: string, pending: number, total: number): string {
@@ -141,8 +136,6 @@ export class ClientMetricsService {
       recommendations.push('Cliente apto para incremento de línea de crédito');
     }
 
-    return recommendations.length > 0
-      ? recommendations
-      : ['Continuar seguimiento regular'];
+    return recommendations.length > 0 ? recommendations : ['Continuar seguimiento regular'];
   }
 }
