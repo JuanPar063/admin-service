@@ -19,7 +19,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_HOST: postgres
+      DATABASE_HOST: postgres-admin-service
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
       DATABASE_PASSWORD: admin123

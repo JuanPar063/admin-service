@@ -1,88 +1,74 @@
-# ==============================
-# DOCKERFILE OPTIMIZADO - admin-service
-# ==============================
-
-# ===================================
-# STAGE 1: Dependencies (se cachea)
-# ===================================
-FROM node:20-alpine AS dependencies
-
-WORKDIR /usr/src/app
-
-# Copiar SOLO archivos de dependencias
-COPY package*.json ./
-
-# Instalar dependencias (esta capa se cachea)
-RUN npm ci --only=production && \
-    npm cache clean --force
-
-# ===================================
-# STAGE 2: Development Dependencies
-# ===================================
+# ============================================
+# STAGE 1: Instalar dependencias de desarrollo
+# ============================================
 FROM node:20-alpine AS dev-dependencies
 
+# Establecer directorio de trabajo
 WORKDIR /usr/src/app
 
+# Copiar archivos de configuración de dependencias
 COPY package*.json ./
 
 # Instalar TODAS las dependencias para build
-RUN npm ci && \
+RUN npm ci --legacy-peer-deps && \
     npm cache clean --force
 
-# ===================================
-# STAGE 3: Build
-# ===================================
+# ============================================
+# STAGE 2: Desarrollo
+# ============================================
+FROM node:20-alpine AS development
+
+# Establecer directorio de trabajo
+WORKDIR /usr/src/app
+
+# Copiar node_modules desde la etapa anterior
+COPY --from=dev-dependencies /usr/src/app/node_modules ./node_modules
+
+# Copiar archivos de la aplicación
+COPY . .
+
+# Exponer el puerto
+EXPOSE 3000
+
+# Comando para desarrollo con hot-reload
+CMD ["npm", "run", "start:dev"]
+
+# ============================================
+# STAGE 3: Builder (para producción)
+# ============================================
 FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
-# Copiar dependencias instaladas
-COPY --from=dev-dependencies /usr/src/app/node_modules ./node_modules
-
-# Copiar código fuente
-COPY . .
-
-# Build del proyecto
-RUN npm run build
-
-# ===================================
-# STAGE 4: Development
-# ===================================
-FROM node:20-alpine AS development
-
-WORKDIR /usr/src/app
-
-# Copiar dependencias de desarrollo
-COPY --from=dev-dependencies /usr/src/app/node_modules ./node_modules
 COPY package*.json ./
 
-# Copiar código fuente
+# Instalar solo dependencias de producción
+RUN npm ci --legacy-peer-deps --only=production && \
+    npm cache clean --force
+
 COPY . .
 
-ENV NODE_ENV=development
-EXPOSE 3000
+# Compilar la aplicación
+RUN npm run build
 
-CMD ["npm", "run", "start:dev"]
-
-# ===================================
-# STAGE 5: Production
-# ===================================
+# ============================================
+# STAGE 4: Producción
+# ============================================
 FROM node:20-alpine AS production
 
 WORKDIR /usr/src/app
 
-# Copiar SOLO dependencias de producción
-COPY --from=dependencies /usr/src/app/node_modules ./node_modules
-COPY package*.json ./
+# Copiar node_modules de producción
+COPY --from=builder /usr/src/app/node_modules ./node_modules
 
 # Copiar código compilado
 COPY --from=builder /usr/src/app/dist ./dist
 
-ENV NODE_ENV=production
-ENV PORT=3000
-
+# Exponer el puerto
 EXPOSE 3000
 
+# Usuario no root
 USER node
 
+# Comando para producción
 CMD ["node", "dist/main.js"]
