@@ -7,7 +7,12 @@ dotenv.config();
 async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   const app = await NestFactory.create(AppModule);
-
+    // ✅ Habilitar CORS
+  app.enableCors({
+    origin: ['http://localhost:3004', 'http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    credentials: true,
+  });
   // Configuración Swagger
   const config = new DocumentBuilder()
     .setTitle('Admin Service API')
