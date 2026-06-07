@@ -3,6 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { getJwtSecret, getJwtExpiration } from './infrastructure/config/jwt.config';
+import { HealthController } from './infrastructure/health/health.controller';
 
 // Entities
 import { Metrics } from './domain/entities/metrics.entity';
@@ -50,15 +54,23 @@ import { LoanClient } from './infrastructure/adapters/in/LoanClientHTTP';
     TypeOrmModule.forFeature([Metrics, AuditLog, Report]),
     HttpModule, // ✅ necesario para ProfileClient y LoanClient
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secret',
-      signOptions: { expiresIn: '24h' },
+      secret: getJwtSecret(),
+      signOptions: { expiresIn: getJwtExpiration() },
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: parseInt(process.env.THROTTLE_TTL || '60', 10) * 1000,
+        limit: parseInt(process.env.THROTTLE_LIMIT || '100', 10),
+      },
+    ]),
   ],
   controllers: [
     AdminController,
     CreditAnalysisController, // ✅ controller de análisis crediticio
+    HealthController,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     MetricsService,
     ClientMetricsService,
     AuditLogService,

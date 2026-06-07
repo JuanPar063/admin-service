@@ -13,5 +13,6 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   password: process.env.DATABASE_PASSWORD || 'admin123',
   database: process.env.DATABASE_NAME || 'admin_service_db',
   entities: [Metrics, AuditLog, Report],
-  synchronize: true,
+  // En producción NO sincronizar el esquema automáticamente (usar migraciones).
+  synchronize: process.env.NODE_ENV !== 'production',
 };
