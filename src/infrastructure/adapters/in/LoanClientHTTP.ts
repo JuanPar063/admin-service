@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import axiosRetry from 'axios-retry';
 
 export interface Payment {
   id?: string;
@@ -32,9 +33,25 @@ type WrappedResponse<T> = { message?: string; data: T } | T;
 @Injectable()
 export class LoanClient {
   private readonly logger = new Logger(LoanClient.name);
-  private readonly LOAN_SERVICE_URL = process.env.LOAN_SERVICE_URL ?? 'http://loan-service:3001';
+  private readonly LOAN_SERVICE_URL =
+    (process.env.LOAN_SERVICE_URL?.replace(/\/$/, '') ?? 'http://loan-service:3001') +
+    '/api/v1';
 
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly http: HttpService) {
+    // Reintentos automáticos ante errores de red o 5xx hacia loan-service.
+    // Guard de idempotencia: el HttpService es singleton y compartido con ProfileClient.
+    const axiosRef = this.http.axiosRef as any;
+    if (!axiosRef.__retryConfigured) {
+      axiosRetry(this.http.axiosRef, {
+        retries: 3,
+        retryDelay: axiosRetry.exponentialDelay,
+        retryCondition: (error) =>
+          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+          (error.response?.status ?? 0) >= 500,
+      });
+      axiosRef.__retryConfigured = true;
+    }
+  }
 
   /**
    * Extrae data de respuestas envueltas en { message, data }

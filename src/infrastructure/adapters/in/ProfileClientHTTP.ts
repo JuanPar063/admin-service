@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
+import axiosRetry from 'axios-retry';
+import CircuitBreaker from 'opossum';
 
 export interface Profile {
   id_user: string;
@@ -24,9 +26,47 @@ type WrappedResponse<T> = { message?: string; data: T } | T;
 export class ProfileClient {
   private readonly logger = new Logger(ProfileClient.name);
   private readonly baseUrl =
-    process.env.USER_SERVICE_URL?.replace(/\/$/, '') ?? 'http://user-service:3000';
+    (process.env.USER_SERVICE_URL?.replace(/\/$/, '') ?? 'http://user-service:3000') +
+    '/api/v1';
+  private readonly getProfileBreaker: CircuitBreaker<[string], Profile>;
 
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly http: HttpService) {
+    // Reintentos automáticos ante errores de red o 5xx.
+    // El HttpService es singleton y se comparte con LoanClient, así que el guard
+    // evita registrar los interceptores de reintento más de una vez.
+    const axiosRef = this.http.axiosRef as any;
+    if (!axiosRef.__retryConfigured) {
+      axiosRetry(this.http.axiosRef, {
+        retries: 3,
+        retryDelay: axiosRetry.exponentialDelay,
+        retryCondition: (error) =>
+          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+          (error.response?.status ?? 0) >= 500,
+      });
+      axiosRef.__retryConfigured = true;
+    }
+
+    // Circuit breaker hacia user-service para getProfile.
+    this.getProfileBreaker = new CircuitBreaker(
+      (userId: string) => this.fetchProfile(userId),
+      {
+        timeout: parseInt(process.env.PROFILE_TIMEOUT_MS || '5000', 10),
+        errorThresholdPercentage: 50,
+        resetTimeout: parseInt(process.env.PROFILE_RESET_MS || '10000', 10),
+        errorFilter: (err: any) => err?.response?.status === 404,
+      },
+    );
+    this.getProfileBreaker.on('open', () =>
+      this.logger.error('🔴 Circuit breaker ABIERTO hacia user-service'),
+    );
+  }
+
+  private async fetchProfile(userId: string): Promise<Profile> {
+    const res = await firstValueFrom(
+      this.http.get<WrappedResponse<Profile>>(`${this.baseUrl}/profiles/${userId}`),
+    );
+    return this.normalizeProfile(this.unwrap(res.data));
+  }
 
   private unwrap<T>(payload: WrappedResponse<T>): T {
     return (payload as any)?.data ?? (payload as T);
@@ -46,10 +86,7 @@ export class ProfileClient {
 
   async getProfile(userId: string): Promise<Profile> {
     try {
-      const res = await firstValueFrom(
-        this.http.get<WrappedResponse<Profile>>(`${this.baseUrl}/profiles/${userId}`),
-      );
-      return this.normalizeProfile(this.unwrap(res.data));
+      return await this.getProfileBreaker.fire(userId);
     } catch (error) {
       this.logError('getProfile', error);
       throw error;
