@@ -1,98 +1,68 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# admin-service — Backoffice y Análisis Crediticio
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Microservicio NestJS para el **panel de administración**: métricas agregadas, dashboard, auditoría,
+reportes y, sobre todo, el **análisis crediticio** (score, capacidad de endeudamiento, recomendación).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+- **Puerto host:** 3003 (interno 3000) · **Prefijo:** `/api/v1` · **Swagger:** http://localhost:3003/api/docs
+- **BD:** PostgreSQL `admin_service_db` (puerto host 5435)
+- **Auth:** `JwtAuthGuard` propio (verifica el JWT con `JWT_SECRET` compartido) + `@Roles('admin')`.
+  **Todos los endpoints requieren rol `admin`.**
 
-## Description
+## Rol dentro del sistema
+```
+frontend(admin) ─► /admin/*, /credit-analysis/*
+admin-service ─► HTTP ─► user-service (perfiles, monthly_income)
+              └► HTTP ─► loan-service  (préstamos enriquecidos: /loans/user/:id)
+```
+**Consume** user-service y loan-service (con **axios-retry + circuit breaker**). No es consumido por otros.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Entidades
+`Metrics` (score, risk_level, pending_loans, total_loans…), `AuditLog`, `Report`.
 
-## Project setup
+## Endpoints (`/api/v1`)
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/admin/profiles` | Perfiles (proxy a user-service) |
+| GET | `/admin/metrics` · `/admin/metrics/:userId` · `/admin/metrics/me` | Métricas |
+| GET | `/admin/clients/:clientId/metrics` · `.../metrics/export` | Detalle por cliente |
+| POST | `/admin/clients/metrics/batch` | Cálculo en lote |
+| GET | `/admin/dashboard/metrics` | Dashboard (score promedio, alto riesgo, pendientes) |
+| GET/POST | `/admin/audit-logs` · `/admin/reports` | Auditoría / reportes |
+| GET | `/credit-analysis` · `/credit-analysis/document/:doc` | Análisis crediticio |
+| GET | `/health/liveness` · `/health/readiness` | Healthchecks (readiness verifica BD + downstream) |
 
+## Funciones básicas
+- **CreditAnalysisService**: combina historial de pagos (puntualidad/mora), capacidad de
+  endeudamiento (`debtRatio`, `maxRecommendedLoan` con techo del 40%) y produce
+  `{ score, approved, maxAmount, risks, recommendations }`.
+- Interés tratado como **mensual**, coherente con loan-service.
+
+## Variables de entorno (ver `.env.example`)
+`PORT=3000`, `NODE_ENV`, `DB_HOST/DB_PORT/DB_USER/DB_PASS/DB_NAME` (runtime),
+`JWT_SECRET`, `LOAN_SERVICE_URL`, `USER_SERVICE_URL` (con `http://`), `CORS_ORIGINS`, `THROTTLE_*`.
+> El CLI de migraciones (`database.config.ts`) usa `DATABASE_*` en vez de `DB_*` (esquema histórico distinto).
+
+## ⚠️ Importante para testear
+- **`synchronize: false`**: en una BD nueva, admin-service **no crea sus tablas** (`metrics`,
+  `audit_logs`, `reports`) automáticamente. Hasta que existan, los endpoints que las consultan fallan.
+  Solución: ejecutar migraciones / crear las tablas antes de probar el dashboard.
+- El acceso requiere un **JWT con rol `admin`** (regístrate/loguéate con `role: "admin"` en user-login,
+  o ajusta el rol en BD) y enviarlo como `Authorization: Bearer <token>`.
+
+## Cómo testear
+Vía `../loans-software` (así user-service y loan-service están disponibles).
 ```bash
-$ npm install
+npm install --legacy-peer-deps   # ver nota de versiones abajo
+cp .env.example .env && npm run start:dev
+npm run build && npm test
+curl http://localhost:3003/api/v1/admin/dashboard/metrics -H "Authorization: Bearer <token-admin>"
 ```
 
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Notas para nuevos administradores del código
+- **Está en NestJS 10** (no 11 como los demás): `@nestjs/axios` v3, `@nestjs/swagger` v8, etc.
+  Por eso se instala con `--legacy-peer-deps`, los healthchecks **no** usan `@nestjs/terminus`
+  (hay un `HealthController` propio que hace `SELECT 1` y ping a los downstream) y **no** hay logs pino.
+  Alinear a Nest 11 es un trabajo pendiente (mejora 2.1).
+- Clientes HTTP: `infrastructure/adapters/in/ProfileClientHTTP.ts` y `LoanClientHTTP.ts`
+  (axios-retry + opossum, rutas `/api/v1`).
+- Secreto centralizado en `infrastructure/config/jwt.config.ts`.
