@@ -45,7 +45,8 @@ import { LoanClient } from './infrastructure/adapters/in/LoanClientHTTP';
       password: process.env.DB_PASS || 'admin123',
       database: process.env.DB_NAME || 'admin_service_db',
       entities: [Metrics, AuditLog, Report],
-      synchronize: false,
+      // En dev crea las tablas (metrics, audit_logs, reports); en prod NO (migraciones).
+      synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',
       autoLoadEntities: true,
       retryAttempts: 5,
